@@ -14,8 +14,8 @@ private:
 		k_alloc_num
 	};
 
-	const int bullet_max = 100;
-	const int radius = 2;
+	int bullet_max;
+	int radius;
 	int *position[5];
 	void(*render_func)(int, int, int, void*);
 	int(*move_func)(int, int&, int&, int&, int&, void*);
@@ -26,7 +26,9 @@ private:
 	void *velocity_ext;
 
 public:
-	k_bullet() {
+	k_bullet(int radius = 4, int max = 100) {
+		this->bullet_max = max;
+		this->radius = radius;
 		for (int i = 0; i < k_alloc_num; i++) {
 			position[i] = (int *)malloc(bullet_max * sizeof(int));
 			memset(position[i], 0, bullet_max * sizeof(int));
@@ -125,7 +127,7 @@ int bullet_move_vel(int idx, int &x, int &y, int &vx, int &vy, void *ext) {
 
 void bullet_velocity_up(int idx, int &x, int &y, int &vx, int &vy, void *ext) {
 	vx = 0;
-	vy = -8;
+	vy = -16;
 }
 
 void bullet_render_normal(int idx, int x, int y, void *ext) {
@@ -158,11 +160,14 @@ public:
 class k_enemy_zako : public k_enemy {
 private:
 	int state;
+	int state2;
 	k_sprite *spr;
 public:
 	k_enemy_zako(int x, int y) : k_enemy(x, y) {
 		spr = new k_sprite("test.png");
 		state = 0;
+		if (x > k_lib::get_width() / 2) state2 = 1;
+		else state2 = 0;
 	}
 
 	~k_enemy_zako() {
@@ -172,13 +177,18 @@ public:
 	int move() {
 		switch(state) {
 		case 0:
-			y += 4;
-			if (y > k_lib::get_height() - 50) state++;
+			y += 10;
+			if (y > k_lib::get_height() - 200) state++;
 			break;
 		case 1:
-			if (x > k_lib::get_width() / 2) x -= 2;
-			else x += 2;
-			y -= 2;
+			if (state2) {
+				if (x > k_lib::get_width() / 2) x -= 6;
+				else x = k_lib::get_width() / 2;
+			} else {
+				if (x < k_lib::get_width() / 2) x += 6;
+				else x = k_lib::get_width() / 2;
+			}
+			y -= 6;
 			if (y < -20) return 0;
 			break;
 		}
@@ -238,7 +248,6 @@ public:
 		for (int i = 0; i < 100; i++) {
 			if (enemies[i] != NULL) {
 				int r = enemies[i]->move();
-				enemies[i]->render();
 				if (!r) {
 					delete enemies[i];
 					enemies[i] = NULL;
@@ -247,14 +256,22 @@ public:
 		}
 	}
 
-	int bullet_check(k_bullet &b) {
+	void render() {
+		for (int i = 0; i < 100; i++) {
+			if (enemies[i] != NULL) {
+				enemies[i]->render();
+			}
+		}
+	}
+
+	int bullet_check(k_bullet *b) {
 		int score = 0;
 		for (int i = 0; i < 100; i++) {
 			if (enemies[i] != NULL) {
 				int x, y, r;
 				r = enemies[i]->get_radius();
 				enemies[i]->get_position(x, y);
-				if (b.check_hit(x, y, r)) {
+				if (b->check_hit(x, y, r)) {
 					score += enemies[i]->get_points();
 					delete enemies[i];
 					enemies[i] = NULL;
@@ -302,44 +319,41 @@ int main(int argc, char *argv[])
 	k_sprite *spr = new k_sprite("test.png");
 	k_sprite *spr2 = new k_sprite("test.png");
 
-	k_bullet pblt;
+	k_bullet *pblt = new k_bullet(16);
 	int timr_pblt = 0;
 
 	int g_frm = 0;
 
-	pblt.set_move_func(bullet_move_vel);
-	pblt.set_velocity_func(bullet_velocity_up);
-	pblt.set_render_func(bullet_render_normal);
-	pblt.set_render_ext(spr2);
+	pblt->set_move_func(bullet_move_vel);
+	pblt->set_velocity_func(bullet_velocity_up);
+	pblt->set_render_func(bullet_render_normal);
+	pblt->set_render_ext(spr2);
 
 	k_enemy *zako = new k_enemy_zako(10, 0);
 
 	k_enemy_queue equeue;
 	equeue.push_queue(zako, 100);
 
+	int timr_fps = k_lib::mticks();
+
 	spr->set_position(k_lib::get_width() / 2  - spr->get_width() / 2, k_lib::get_height() / 2);
 
 	while (!k_lib::poll_events()) {
-		k_lib::clear();
-
-		spr->render();
-
-		if (k_lib::button_down(k_lib::k_lib_bt_up)) spr->add_position(0, -3);
-		if (k_lib::button_down(k_lib::k_lib_bt_down)) spr->add_position(0, 3);
-		if (k_lib::button_down(k_lib::k_lib_bt_left)) spr->add_position(-2, 0);
-		if (k_lib::button_down(k_lib::k_lib_bt_right)) spr->add_position(2, 0);
+		if (k_lib::button_down(k_lib::k_lib_bt_up)) spr->add_position(0, -4);
+		if (k_lib::button_down(k_lib::k_lib_bt_down)) spr->add_position(0, 4);
+		if (k_lib::button_down(k_lib::k_lib_bt_left)) spr->add_position(-3, 0);
+		if (k_lib::button_down(k_lib::k_lib_bt_right)) spr->add_position(3, 0);
 
 		if (k_lib::button_down(k_lib::k_lib_bt_1)) {
 			int x, y;
 			spr->get_position(x, y);
-			if (g_frm - timr_pblt > 10) {
-				pblt.shot(x + spr->get_width() / 2, y + spr->get_height() / 2);
+			if (g_frm - timr_pblt > 2) {
+				pblt->shot(x + spr->get_width() / 2, y + spr->get_height() / 2);
 				timr_pblt = g_frm;
 			}
 		}
 
-		pblt.move();
-		pblt.render();
+		pblt->move();
 
 		//zako->move();
 		//zako->render();
@@ -352,8 +366,19 @@ int main(int argc, char *argv[])
 			spr->set_position(k_lib::get_width() / 2 - spr->get_width() / 2, k_lib::get_height() / 2);
 		}
 
+		k_lib::clear();
+
+		equeue.render();
+		pblt->render();
+		spr->render();
+
 		k_lib::update();
-		k_lib::msleep(10);
+
+		int dif_timr = k_lib::mticks() - timr_fps;
+
+		k_lib::msleep(15 - dif_timr);
+
+		timr_fps = k_lib::mticks();
 		g_frm++;
 	}
 
