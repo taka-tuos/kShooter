@@ -10,6 +10,7 @@ namespace k_lib {
 	SDL_Window *window;
 	SDL_Event event;
 	SDL_Renderer *renderer;
+	int m_w, m_h;
 };
 
 void k_lib::init(int w, int h) {
@@ -18,10 +19,13 @@ void k_lib::init(int w, int h) {
 		"SDL2",                            // ウィンドウのタイトル
 		SDL_WINDOWPOS_UNDEFINED,           // X座標の初期値
 		SDL_WINDOWPOS_UNDEFINED,           // Y座標の初期値
-		640,                               // 幅のピクセル数
-		480,                               // 高さのピクセル数
+		w,                               // 幅のピクセル数
+		h,                               // 高さのピクセル数
 		0                                  // フラグ
 	);
+
+	m_w = w;
+	m_h = h;
 
 	renderer = SDL_CreateRenderer(window, -1, 0);
 	SDL_RenderClear(k_lib::renderer);
@@ -52,6 +56,14 @@ void k_lib::msleep(int t) {
 
 int k_lib::mticks() {
 	return SDL_GetTicks();
+}
+
+int k_lib::get_width() {
+	return m_w;
+}
+
+int k_lib::get_height() {
+	return m_h;
 }
 
 bool k_lib::button_down(int n) {
@@ -114,4 +126,12 @@ void k_sprite::render() {
 	r.h = h;
 
 	SDL_RenderCopy(k_lib::renderer, (SDL_Texture *)texture, NULL, &r);
+}
+
+int k_sprite::get_width() {
+	return w;
+}
+
+int k_sprite::get_height() {
+	return h;
 }

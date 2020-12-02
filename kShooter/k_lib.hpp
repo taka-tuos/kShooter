@@ -11,6 +11,8 @@ public:
 	void set_position(int x, int y);
 	void get_position(int &x, int &y);
 	void add_position(int x, int y);
+	int get_width();
+	int get_height();
 	void render();
 };
 
@@ -21,6 +23,8 @@ namespace k_lib {
 	void clear();
 	void msleep(int t);
 	int mticks();
+	int get_width();
+	int get_height();
 
 	enum {
 		k_lib_bt_up = 0,
