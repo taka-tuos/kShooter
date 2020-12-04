@@ -92,7 +92,7 @@ k_sprite::k_sprite(const char *path) {
 
 	stbi_uc *pix = stbi_load(path, &w, &h, &dmy, 4);
 
-	texture = SDL_CreateTexture(k_lib::renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, w, h);
+	texture = SDL_CreateTexture(k_lib::renderer, SDL_PIXELFORMAT_ABGR8888, SDL_TEXTUREACCESS_STREAMING, w, h);
 	SDL_UpdateTexture((SDL_Texture *)texture, NULL, pix, w * 4);
 
 	stbi_image_free(pix);
