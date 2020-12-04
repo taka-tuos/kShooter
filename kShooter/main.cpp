@@ -130,6 +130,16 @@ void bullet_velocity_up(int idx, int &x, int &y, int &vx, int &vy, void *ext) {
 	vy = -16;
 }
 
+void bullet_velocity_spread1(int idx, int &x, int &y, int &vx, int &vy, void *ext) {
+	int cnt = *((int *)ext);
+	int ary[] = { -6,0,6 };
+	vx = ary[cnt % 3];
+	vy = -6;
+
+	cnt++;
+	*((int *)ext) = cnt;
+}
+
 void bullet_render_normal(int idx, int x, int y, void *ext) {
 	k_sprite *spr = (k_sprite *)ext;
 	spr->set_position(x - spr->get_width() / 2, y - spr->get_height() / 2);
@@ -146,6 +156,8 @@ public:
 	virtual int get_points() = 0;
 	virtual int get_radius() = 0;
 
+	virtual bool check_bullet(int, int, int) = 0;
+
 	k_enemy(int x, int y) {
 		this->x = x;
 		this->y = y;
@@ -154,59 +166,6 @@ public:
 	void get_position(int &x, int &y) {
 		x = this->x;
 		y = this->y;
-	}
-};
-
-class k_enemy_zako : public k_enemy {
-private:
-	int state;
-	int state2;
-	k_sprite *spr;
-public:
-	k_enemy_zako(int x, int y) : k_enemy(x, y) {
-		spr = new k_sprite("test.png");
-		state = 0;
-		if (x > k_lib::get_width() / 2) state2 = 1;
-		else state2 = 0;
-	}
-
-	~k_enemy_zako() {
-		delete spr;
-	}
-
-	int move() {
-		switch(state) {
-		case 0:
-			y += 10;
-			if (y > k_lib::get_height() - 200) state++;
-			break;
-		case 1:
-			if (state2) {
-				if (x > k_lib::get_width() / 2) x -= 6;
-				else x = k_lib::get_width() / 2;
-			} else {
-				if (x < k_lib::get_width() / 2) x += 6;
-				else x = k_lib::get_width() / 2;
-			}
-			y -= 6;
-			if (y < -20) return 0;
-			break;
-		}
-
-		return 1;
-	}
-
-	void render() {
-		spr->set_position(x - spr->get_width() / 2, y - spr->get_height() / 2);
-		spr->render();
-	}
-
-	int get_points() {
-		return 100;
-	}
-
-	int get_radius() {
-		return 8;
 	}
 };
 
@@ -296,6 +255,8 @@ public:
 				if ((px2 - px1) * (px2 - px1) + (py2 - py1) * (py2 - py1) <= (r1 + r2) * (r1 + r2)) {
 					return true;
 				}
+
+				if (enemies[i]->check_bullet(x, y, r)) return true;
 			}
 		}
 		return false;
@@ -309,6 +270,197 @@ public:
 				break;
 			}
 		}
+	}
+};
+
+k_enemy_queue *g_equeue;
+
+class k_enemy_zako : public k_enemy {
+private:
+	int state;
+	int state2;
+	k_sprite *spr;
+public:
+	k_enemy_zako(int x, int y) : k_enemy(x, y) {
+		spr = new k_sprite("test.png");
+		state = 0;
+		if (x > k_lib::get_width() / 2) state2 = 1;
+		else state2 = 0;
+	}
+
+	~k_enemy_zako() {
+		delete spr;
+	}
+
+	int move() {
+		switch(state) {
+		case 0:
+			y += 10;
+			if (y > k_lib::get_height() - 200) state++;
+			break;
+		case 1:
+			if (state2) {
+				if (x > k_lib::get_width() / 2) x -= 6;
+				else x = k_lib::get_width() / 2;
+			} else {
+				if (x < k_lib::get_width() / 2) x += 6;
+				else x = k_lib::get_width() / 2;
+			}
+			y -= 6;
+			if (y < -20) return 0;
+			break;
+		}
+
+		return 1;
+	}
+
+	void render() {
+		spr->set_position(x - spr->get_width() / 2, y - spr->get_height() / 2);
+		spr->render();
+	}
+
+	int get_points() {
+		return 100;
+	}
+
+	int get_radius() {
+		return 8;
+	}
+
+	bool check_bullet(int x, int y, int r) {
+		return false;
+	}
+};
+
+class k_enemy_zako3 : public k_enemy {
+private:
+	k_sprite *spr;
+	k_sprite *spr2;
+	k_bullet *b;
+	int fcnt;
+	int vcnt;
+public:
+	k_enemy_zako3(int x, int y) : k_enemy(x, y) {
+		spr = new k_sprite("test.png");
+		spr2 = new k_sprite("bl.png");
+		b = new k_bullet();
+
+		b->set_move_func(bullet_move_vel);
+		b->set_render_func(bullet_render_normal);
+		b->set_velocity_func(bullet_velocity_spread1);
+
+		b->set_render_ext(spr2);
+		b->set_velocity_ext(&vcnt);
+
+		fcnt = 0;
+		vcnt = 0;
+	}
+
+	~k_enemy_zako3() {
+		delete spr;
+	}
+
+	int move() {
+		y += 2;
+		b->move();
+
+		if (fcnt == 15 && y < k_lib::get_height()) {
+			fcnt = 0;
+			b->shot(x, y);
+			b->shot(x, y);
+			b->shot(x, y);
+		}
+		fcnt++;
+
+		if (y > k_lib::get_height() +  300) return 0;
+
+		return 1;
+	}
+
+	void render() {
+		spr->set_position(x - spr->get_width() / 2, y - spr->get_height() / 2);
+		spr->render();
+		b->render();
+	}
+
+	int get_points() {
+		return 100;
+	}
+
+	int get_radius() {
+		return 0;
+	}
+
+	bool check_bullet(int x, int y, int r) {
+		return b->check_hit(x, y, r);
+	}
+};
+
+class k_enemy_zako2 : public k_enemy {
+private:
+	int state;
+	int tim1, tim2;
+	int cnt;
+	int ctim;
+	k_sprite *spr;
+public:
+	k_enemy_zako2(int x, int y) : k_enemy(x, y) {
+		spr = new k_sprite("test.png");
+		state = 0;
+		tim1 = 0;
+		tim2 = 0;
+		cnt = 0;
+		ctim = 0;
+	}
+
+	~k_enemy_zako2() {
+		delete spr;
+	}
+
+	int move() {
+		switch (state) {
+		case 0:
+			y -= 8;
+			tim2 = 0;
+			tim1++;
+			if (cnt >= 2) ctim++;
+			if (ctim == 30) g_equeue->push_queue(new k_enemy_zako3(x, y),1);
+			if (tim1 > 30) state = 1;
+			break;
+		case 1:
+			y += 8;
+
+			tim1 = 0;
+			tim2++;
+
+			if (tim2 > 10) {
+				state = 0;
+				cnt++;
+			}
+
+			if (y < -20) return 0;
+
+			break;
+		}
+
+		return 1;
+	}
+
+	void render() {
+		spr->set_position(x - spr->get_width() / 2, y - spr->get_height() / 2);
+		spr->render();
+	}
+
+	int get_points() {
+		return 100;
+	}
+
+	int get_radius() {
+		return 0;
+	}
+
+	bool check_bullet(int x, int y, int r) {
+		return false;
 	}
 };
 
@@ -329,12 +481,21 @@ int main(int argc, char *argv[])
 	pblt->set_render_func(bullet_render_normal);
 	pblt->set_render_ext(spr2);
 
-	k_enemy *zako = new k_enemy_zako(10, 0);
+	k_enemy *zako1 = new k_enemy_zako2(40, k_lib::get_height());
+	k_enemy *zako2 = new k_enemy_zako2(480-40, k_lib::get_height());
+	k_enemy *zako3 = new k_enemy_zako2(40, k_lib::get_height());
+	k_enemy *zako4 = new k_enemy_zako2(480 - 40, k_lib::get_height());
 
 	k_enemy_queue equeue;
-	equeue.push_queue(zako, 100);
+	equeue.push_queue(zako1, 100);
+	equeue.push_queue(zako2, 100);
+	equeue.push_queue(zako3, 160);
+	equeue.push_queue(zako4, 160);
+
+	g_equeue = &equeue;
 
 	int timr_fps = k_lib::mticks();
+	int timr_mtk = 0;
 
 	spr->set_position(k_lib::get_width() / 2  - spr->get_width() / 2, k_lib::get_height() / 2);
 
@@ -362,21 +523,26 @@ int main(int argc, char *argv[])
 
 		int x, y;
 		spr->get_position(x, y);
-		if (equeue.player_check(x, y, 16)) {
+		if (equeue.player_check(x, y, 16) && timr_mtk == 0) {
 			spr->set_position(k_lib::get_width() / 2 - spr->get_width() / 2, k_lib::get_height() / 2);
+			timr_mtk = 120;
 		}
+
+		if(timr_mtk > 0) timr_mtk--;
 
 		k_lib::clear();
 
 		equeue.render();
 		pblt->render();
-		spr->render();
+		if ((timr_mtk % 2) == 0) spr->render();
 
 		k_lib::update();
 
 		int dif_timr = k_lib::mticks() - timr_fps;
 
-		k_lib::msleep(15 - dif_timr);
+		int mdelay = 15 - dif_timr;
+
+		if(mdelay > 0) k_lib::msleep(mdelay);
 
 		timr_fps = k_lib::mticks();
 		g_frm++;
